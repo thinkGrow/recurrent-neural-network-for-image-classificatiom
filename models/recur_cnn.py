@@ -82,8 +82,7 @@ class RecurCNN(nn.Module):
         :rtype: torch.Tensor
         """
         # self.thoughts = torch.zeros((self.iters, x.shape[0], self.out_channels))
-        self.thoughts = torch.zeros((self.iters, x.shape[0], self.out_channels))
-        # .to(x.device)
+        self.thoughts = torch.zeros((self.iters, x.shape[0], self.out_channels)).to(x.device)
         # print(f' shape of x[o] {x.shape[0]}')
         out = self.first_layer(x)
         # print(f'first layer {out.shape}')

@@ -22,6 +22,9 @@ from utils.perceptual_loss import VGG16PerceptualLoss
 
 
 def train(
+    
+    # PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
+    
     # data_dir: str,
     # scale_factor: int = 4,
     # patch_size: int = 48,
@@ -80,8 +83,7 @@ def train(
     # Create model.
     model = RecurCNN(
         width=32
-    )
-    # .to(device)
+    ).to(device)
 
     # Create criterion.
     criterion_mse = nn.MSELoss()
@@ -113,37 +115,36 @@ def train(
     # setup tensorboard
     writer = SummaryWriter(log_dir=save_dir)
 
-    def acc_calc(loader, model):
-        num_corrects = 0
-        num_samples = 0
-        model.eval()
+    # def acc_calc(loader, model):
+    #     num_corrects = 0
+    #     num_samples = 0
+    #     model.eval()
 
-        with torch.no_grad():
-            for x, y in test_loader:
-            # send the data to the device
-            # x = x.to(device)
-            # y = y.to(device)
+    #     with torch.no_grad():
+    #         for x, y in test_loader:
+    #         # send the data to the device
+    #         # x = x.to(device)
+    #         # y = y.to(device)
 
-                # prepare the data for the model
-                # x = x.reshape(-1, 784)
+    #             # prepare the data for the model
+    #             # x = x.reshape(-1, 784)
 
-                # forward
-                y_hat = model(x)
+    #             # forward
+    #             y_hat = model(x)
 
-                # calculations for accuracy
-                _, predictions = y_hat.max(1)
-                num_corrects += (predictions == y).sum()
-                num_samples += predictions.size(0)
+    #             # calculations for accuracy
+    #             _, predictions = y_hat.max(1)
+    #             num_corrects += (predictions == y).sum()
+    #             num_samples += predictions.size(0)
 
-                #f1 score
-                # f1 = F1Score(task="multiclass", num_classes=3)
-                mcf1s = MulticlassF1Score(num_classes=3, average=None)
-                mcf1s(predictions, targets)
+    #             #f1 score
+    #             # f1 = F1Score(task="multiclass", num_classes=3)
                 
 
-
-            print(f"Accuracy = {num_corrects/num_samples*100:.2f}; Received {num_corrects}/{num_samples}")
-            model.train()
+    #         mcf1s = MulticlassF1Score(num_classes=10)
+    #         print(f" f-score = {mcf1s(predictions, targets)}")
+    #         print(f"Accuracy = {num_corrects/num_samples*100:.2f}; Received {num_corrects}/{num_samples}")
+    #         model.train()
 
 
     # Train.
@@ -154,9 +155,14 @@ def train(
         # for lr, hr in loop:
         for batch_idx, (data, targets) in enumerate(train_loader):
 
+            # print(data.shape)
+            # print(targets.shape)
             # Move to device.
-            # data = data.to(device)
-            # targets = data.to(device)
+            data = data.to(device)
+            targets = targets.to(device)
+
+            # print(data.shape)
+            # print(targets.shape)
 
             # Forward.
             scores = model(data)
@@ -177,7 +183,7 @@ def train(
             # Update running loss.
             running_loss += loss.item()
             # Check accuracy
-            acc_calc(test_loader, model)
+            # acc_calc(test_loader, model)
             
 
         # Log to tensorboard
@@ -225,7 +231,7 @@ if __name__ == "__main__":
                         default=100, help="number of epochs.")
     parser.add_argument("--lr", type=float, default=1e-4,
                         help="learning rate.")
-    # parser.add_argument("--device", type=str, default="cpu", help="device.")
+    parser.add_argument("--device", type=str, default="cpu", help="device.")
     parser.add_argument("--num_workers", type=int,
                         default=4, help="number of workers.")
     # parser.add_argument("--device", type=str, default="cpu", help="device.")
@@ -242,7 +248,7 @@ if __name__ == "__main__":
         num_epochs=args.num_epochs,
         lr=args.lr,
         num_workers=args.num_workers,
-        # device=args.device,
+        device=args.device,
         save_dir=args.save_dir,
         save_interval=args.save_interval
     )
