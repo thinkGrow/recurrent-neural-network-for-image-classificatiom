@@ -20,7 +20,13 @@ from models.recur_cnn import RecurCNN
 # from utils.div2k_dataset import DIV2KDataset
 from utils.perceptual_loss import VGG16PerceptualLoss
 # from test import function
-
+from sklearn.metrics import f1_score
+from sklearn.metrics import average_precision_score
+from sklearn.metrics import precision_recall_curve
+from sklearn.metrics import precision_score
+from sklearn.metrics import recall_score
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import accuracy_score
 
 def train(
     # PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
@@ -86,6 +92,28 @@ def train(
 
         test_loader = DataLoader(dataset=dataset_test, batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=True)
 
+        # Separate the features (x_test) and labels (y_test) in batches
+        x_train_batches = []
+        y_train_batches = []
+        for images, labels in train_loader:
+            x_train_batches.append(images)
+            y_train_batches.append(labels)
+
+        # Concatenate the batches to obtain the complete x_train and y_train
+        x_train = torch.cat(x_train_batches, dim=0)
+        y_train = torch.cat(y_train_batches, dim=0)
+
+        # Separate the features (x_test) and labels (y_test) in batches
+        x_test_batches = []
+        y_test_batches = []
+        for images, labels in test_loader:
+            x_test_batches.append(images)
+            y_test_batches.append(labels)
+
+        # Concatenate the batches to obtain the complete x_test and y_test
+        x_test = torch.cat(x_test_batches, dim=0)
+        y_test = torch.cat(y_test_batches, dim=0)
+
     # Create model.
     model = RecurCNN(
         width=32
@@ -127,7 +155,7 @@ def train(
     for epoch in range(num_epochs):
         running_loss = 0.0
         loop = tqdm.tqdm(train_loader, total=len(train_loader), leave=False)
-        # test = tqdm.tqdm(test_loader, total=len(test_loader), leave=False)
+
 
         # for lr, hr in loop:
         # for batch_idx, (data, targets) in enumerate(train_loader):
@@ -160,18 +188,154 @@ def train(
 
             # Update running loss.
             running_loss += loss.item()
+
             # Check accuracy
             # acc_calc(test_loader, model)
+        num_corrects = 0
+        num_samples = 0
+
+        best_loss = float("inf")
+        # for epoch in range(num_epochs):
+        running_loss = 0.0
+
+        model.eval()  
+        with torch.no_grad():
+            # CIFAR-10 labels
+            # send the data to the device
+            x_train = x_train.to(device)
+            y_train = y_train.to(device)
+            x_test = x_test.to(device)
+            y_test = y_test.to(device)
+
+
+            # calculations for accuracy
+            _, predictions_train = scores.max(1)
+            num_corrects += (predictions_train == y_train).sum()
+            num_samples += predictions_train.size(0)
+
+            #conclusion
+            accuracy_train = num_corrects/num_samples
+            running_accuracy_train += accuracy_train.item()
+            precision_train = precision_score(y_train.cpu(), predictions_train.cpu(), average="weighted", zero_division=0)
+            recall_train = recall_score(y_train.cpu(), predictions_train.cpu(), average="weighted", zero_division=0)
+            f1_train = f1_score(y_train.cpu(), predictions_train.cpu(), average=None, zero_division=0)
+            cm_train = confusion_matrix(y_train, predictions_train,  labels=[0,1,2,3,4,5,6,7,8,9] )
+            # Normalize the confusion matrix
+            cm_train = cm_train.astype('float') / cm_train.sum(axis=1)[:, np.newaxis]
+            # Plot confusion matrix
+            fig, ax = plt.subplots()
+            im_train = ax.imshow(cm_train, cmap='Blues')
+            # Customize plot settings
+            classes = [f'Class {i}' for i in range(10)]
+            ax.set(xticks=np.arange(10),
+                yticks=np.arange(10),
+                xticklabels=classes,
+                yticklabels=classes,
+                xlabel='Predicted label',
+                ylabel='True label',
+                title='Confusion Matrix')
+            # Loop over data dimensions and create text annotations
+            for i in range(10):
+                for j in range(10):
+                    ax.text(j, i, f'{cm_train[i, j]:.2f}',
+                            ha="center", va="center", color="white")
+            # Adjust layout to fit the colorbar
+            fig.tight_layout()
+            plt.colorbar(im_train)
+
+            # Convert the plot to an image
+            fig.canvas.draw()
+            image_train = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
+            image_train = image_train.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+
+            print(f"\n Epoch no.: {epoch+1}" )
+            print(f"Accuracy Train = {accuracy_train*100:.2f}; Received {num_corrects}/{num_samples}")
+            print(f"Precision Train = {precision_train} and Recall Train = {recall_train} \n f1 Train = {f1_train} \n")
+
+            ###Test###
+
+            # forward
+            scores = model(x_test)
+
+            # calculations for accuracy
+            _, predictions_test = scores.max(1)
+            num_corrects += (predictions_test == y_test).sum()
+            num_samples += predictions_test.size(0)
+
+            #conclusion
+
+            accuracy_test = num_corrects/num_samples
+            running_accuracy_test += accuracy_test.item()
+            precision_test = precision_score(y_test.cpu(), predictions_test.cpu(), average="weighted", zero_division=0)
+            recall_test = recall_score(y_test.cpu(), predictions_test.cpu(), average="weighted", zero_division=0)
+            f1_test = f1_score(y_test.cpu(), predictions_test.cpu(), average=None, zero_division=0)
+
+            cm_test = confusion_matrix(y_test, predictions_test,  labels=[0,1,2,3,4,5,6,7,8,9] )
+            # Normalize the confusion matrix
+            cm_test = cm_test.astype('float') / cm_test.sum(axis=1)[:, np.newaxis]
+            # Plot confusion matrix
+            fig, ax = plt.subplots()
+            im_test = ax.imshow(cm_test, cmap='Blues')
+            # Customize plot settings
+            classes = [f'Class {i}' for i in range(10)]
+            ax.set(xticks=np.arange(10),
+                yticks=np.arange(10),
+                xticklabels=classes,
+                yticklabels=classes,
+                xlabel='Predicted label',
+                ylabel='True label',
+                title='Confusion Matrix')
+            # Loop over data dimensions and create text annotations
+            for i in range(10):
+                for j in range(10):
+                    ax.text(j, i, f'{cm_test[i, j]:.2f}',
+                            ha="center", va="center", color="white")
+            # Adjust layout to fit the colorbar
+            fig.tight_layout()
+            plt.colorbar(im_test)
+
+
+            # Convert the plot to an image
+            fig.canvas.draw()
+            image_test = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
+            image_test = image_test.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+
+            # print(f"\n Epoch no.: {epoch+1}" )
+            print(f"Accuracy Test = {accuracy_test*100:.2f}; Received {num_corrects}/{num_samples}")
+            print(f"Precision Test = {precision_test} and recall Test = {recall_test} \n f1 Test = {f1_test} \n")
 
             
             
 
         # Log to tensorboard
         running_loss /= len(train_loader)
+        running_accuracy_train /= len(train_loader)
+        running_accuracy_test /= len(test_loader)
+
         writer.add_scalar("Loss/train", running_loss, epoch)
-        # writer.add_scalar('Loss/test', np.random.random(), n_iter)
-        # writer.add_scalar('Accuracy/train', np.random.random(), n_iter)
-        # writer.add_scalar('Accuracy/test', np.random.random(), n_iter)
+        writer.add_scalar("Running Accuracy Train", running_accuracy_train, epoch)
+        writer.add_scalar("Running Accuracy Test", running_accuracy_test, epoch)
+
+        writer.add_scalar("Accuracy Train", accuracy_train, epoch)
+        writer.add_scalar("Precision Train", precision_train)
+        writer.add_scalar("Recall Train", recall_train)
+        # Log the confusion matrix as an image in TensorBoard
+        writer.add_image('Confusion Matrix', image_train, dataformats='HWC')
+        # Log each element of the vector f1 individually
+        for index, value in enumerate(f1_train):
+            tag = f'f1_train_element_{index}'
+            writer.add_scalar(tag, value, global_step=index)
+
+        writer.add_scalar("Accuracy test", accuracy_test, epoch)
+        writer.add_scalar("Precision test", precision_test)
+        writer.add_scalar("Recall test", recall_test)
+        # Log each element of the vector f1 individually
+        for index, value in enumerate(f1_test):
+            tag = f'f1_test_element_{index}'
+            writer.add_scalar(tag, value, global_step=index)
+        # Log the confusion matrix as an image in TensorBoard
+        writer.add_image('Confusion Matrix', image_test, dataformats='HWC')
+
 
         # Save model at save interval.
         if (epoch + 1) % save_interval == 0:
