@@ -11,6 +11,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 # import torchsummary
 # from torchsummary import summary
+# torch.mps.set_per_process_memory_fraction(1.0)
+
 
 class RecurCNN(nn.Module):
     """Recurrent CNN model."""

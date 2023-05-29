@@ -19,23 +19,26 @@ from torchmetrics.classification import MulticlassF1Score
 from models.recur_cnn import RecurCNN
 # from utils.div2k_dataset import DIV2KDataset
 from utils.perceptual_loss import VGG16PerceptualLoss
+# from test import function
 
 
 def train(
-    
     # PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
     
     # data_dir: str,
     # scale_factor: int = 4,
     # patch_size: int = 48,
+    PYTORCH_MPS_HIGH_WATERMARK_RATIO: float = "0.0",
     dataset: str = "CIFAR10",
-    batch_size: int = 16,
+    batch_size: int = 8,
     num_epochs: int = 5,
     lr: float = 1e-4,
-    num_workers: int = 4,
+    num_workers: int = 3,
     device: str = "cpu",
     save_dir: str = "weights",
-    save_interval: int = 10
+    save_interval: int = 10,
+    # torch.mps.set_per_process_memory_fraction(0.0)
+
 ) -> None:
     """
     Train function.
@@ -61,6 +64,9 @@ def train(
     :param save_interval: int, save interval.
     :type save_interval: int
     """
+
+    # set_per_process_memory_fraction = 0.0
+    
     # Create save directory.
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
@@ -115,45 +121,17 @@ def train(
     # setup tensorboard
     writer = SummaryWriter(log_dir=save_dir)
 
-    # def acc_calc(loader, model):
-    #     num_corrects = 0
-    #     num_samples = 0
-    #     model.eval()
-
-    #     with torch.no_grad():
-    #         for x, y in test_loader:
-    #         # send the data to the device
-    #         # x = x.to(device)
-    #         # y = y.to(device)
-
-    #             # prepare the data for the model
-    #             # x = x.reshape(-1, 784)
-
-    #             # forward
-    #             y_hat = model(x)
-
-    #             # calculations for accuracy
-    #             _, predictions = y_hat.max(1)
-    #             num_corrects += (predictions == y).sum()
-    #             num_samples += predictions.size(0)
-
-    #             #f1 score
-    #             # f1 = F1Score(task="multiclass", num_classes=3)
-                
-
-    #         mcf1s = MulticlassF1Score(num_classes=10)
-    #         print(f" f-score = {mcf1s(predictions, targets)}")
-    #         print(f"Accuracy = {num_corrects/num_samples*100:.2f}; Received {num_corrects}/{num_samples}")
-    #         model.train()
-
-
-    # Train.
+    
+    # Test
     best_loss = float("inf")
     for epoch in range(num_epochs):
         running_loss = 0.0
         loop = tqdm.tqdm(train_loader, total=len(train_loader), leave=False)
+        # test = tqdm.tqdm(test_loader, total=len(test_loader), leave=False)
+
         # for lr, hr in loop:
-        for batch_idx, (data, targets) in enumerate(train_loader):
+        # for batch_idx, (data, targets) in enumerate(train_loader):
+        for data, targets in loop:
 
             # print(data.shape)
             # print(targets.shape)
@@ -184,6 +162,8 @@ def train(
             running_loss += loss.item()
             # Check accuracy
             # acc_calc(test_loader, model)
+
+            
             
 
         # Log to tensorboard
@@ -217,12 +197,16 @@ def train(
                 os.path.join(save_dir, f"model_best.pth")
             )
 
+        # Save the model
+        torch.save(model.state_dict(), 'model_1.pth')
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Train RecurNet model.")
-    parser.add_argument("--dataset", type=str,
-                        default="CIFAR10", help="dataset")
+    # parser.add_argument("--PYTORCH_MPS_HIGH_WATERMARK_RATIO", type=float,
+    #                     default="0.1", help="mps ratio"),
+    parser.add_argument("--dataset", type=str, default="CIFAR10", help="dataset"),
     # parser.add_argument("--patch_size", type=int,
     #                     default=48, help="patch size.")
     parser.add_argument("--batch_size", type=int,
@@ -242,6 +226,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     train(
+        # PYTORCH_MPS_HIGH_WATERMARK_RATIO = args.PYTORCH_MPS_HIGH_WATERMARK_RATIO,
         dataset=args.dataset,
         # patch_size=args.patch_size,
         batch_size=args.batch_size,

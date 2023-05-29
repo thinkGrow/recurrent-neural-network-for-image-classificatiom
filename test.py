@@ -5,34 +5,46 @@ import os
 import sys
 import time
 from pathlib import Path
+# import grpc
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import tqdm
 import torchvision
+import seaborn as sns
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from torchvision import transforms
 from torchmetrics.classification import MulticlassF1Score
 
+from sklearn.metrics import f1_score
+from sklearn.metrics import average_precision_score
+from sklearn.metrics import precision_recall_curve
+from sklearn.metrics import precision_score
+from sklearn.metrics import recall_score
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import accuracy_score
+
+from PIL import Image
+
 from models.recur_cnn import RecurCNN
 # from utils.div2k_dataset import DIV2KDataset
-from utils.perceptual_loss import VGG16PerceptualLoss
+import scikitplot as skplt
+import matplotlib.pyplot as plt
 
 
 def test(
-    # data_dir: str,
-    # scale_factor: int = 4,
-    # patch_size: int = 48,
     dataset: str = "CIFAR10",
     batch_size: int = 16,
-    num_epochs: int = 5,
+    num_epochs: int = 1,
     lr: float = 1e-4,
     num_workers: int = 4,
     device: str = "cpu",
+    confusion_dir: str = "confusion",
     save_dir: str = "weights",
-    save_interval: int = 10
+    save_interval: int = 10,
+    model_dir: str = "results/run_13"
 ) -> None:
     """
     Train function.
@@ -62,34 +74,43 @@ def test(
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
+    if not os.path.exists(confusion_dir):
+        os.makedirs(confusion_dir)
+
+
     # Create dataset
     if dataset == "CIFAR10":
+        # Define the transform to normalize the data
         transform = transforms.Compose(
             [transforms.ToTensor(),
-            transforms.Normalize((0.5,0.5,0.5),(0.5,0.5,0.5))])
-        
-        dataset_train = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
-        dataset_test = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
-        # Create data loader.
-        train_loader = DataLoader(dataset=dataset_train, batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=True
-        )
+        # Load the CIFAR-10 dataset
+        testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
 
-        test_loader = DataLoader(dataset=dataset_test, batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=True)
+        # Create a data loader for the test set
+        batch_size = 64
+        testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=False, num_workers=2)
+
+        # Separate the features (x_test) and labels (y_test) in batches
+        x_test_batches = []
+        y_test_batches = []
+        for images, labels in testloader:
+            x_test_batches.append(images)
+            y_test_batches.append(labels)
+
+        # Concatenate the batches to obtain the complete x_test and y_test
+        data = torch.cat(x_test_batches, dim=0)
+        targets = torch.cat(y_test_batches, dim=0)
 
     # Create model.
     model = RecurCNN(
         width=32
     )
-    # .to(device)
-
-    # Create criterion.
-    criterion_cel = nn.CrossEntropyLoss(
-        # device=device
-    )
-    # criterion_percp = VGG16PerceptualLoss(
-    #     device=device
-    # )
+    model.to(device)
+    # Load the saved model
+    model.load_state_dict(torch.load('model_1.pth'))
+    model.to(device)
 
     # run version
     test_version = 0
@@ -106,83 +127,75 @@ def test(
     # setup tensorboard
     writer = SummaryWriter(log_dir=save_dir)
 
+    num_corrects = 0
+    num_samples = 0
+ 
     best_loss = float("inf")
-    for epoch in range(num_epochs):
-        running_loss = 0.0
-        loop = tqdm.tqdm(test_loader, total=len(test_loader), leave=False)
+    # for epoch in range(num_epochs):
+    running_loss = 0.0
+    # loop = tqdm.tqdm(test_loader, total=len(test_loader), leave=False)
+    model.eval()  
+    with torch.no_grad():
+         # CIFAR-10 labels
+        # send the data to the device
+        # x = x.to(device)
+        # y = y.to(device)
 
-        with torch.no_grad():
-            for data, targets in test_loader:
-            # send the data to the device
-            # x = x.to(device)
-            # y = y.to(device)
+        # forward
+        scores = model(data)
 
-                # prepare the data for the model
-                # x = x.reshape(-1, 784)
+        # calculations for accuracy
+        _, predictions = scores.max(1)
+        correct = accuracy_score(targets, predictions)
+        num_corrects += (predictions == targets).sum()
+        num_samples += predictions.size(0)
 
-                # forward
-                scores = model(data)
+        #conclusion
+        f1 = f1_score(targets, predictions, average=None, zero_division=0)
+        accuracy = num_corrects/num_samples
+        precision = precision_score(targets, predictions, average="weighted", zero_division=0)
+        recall = recall_score(targets, predictions, average="weighted", zero_division=0)
 
-                # Calculate loss.
-                loss = criterion_cel(scores, targets)
-
-                # calculations for accuracy
-                _, predictions = scores.max(1)
-                num_corrects += (predictions == targets).sum()
-                num_samples += predictions.size(0)
-
-                # Update progress bar.
-                loop.set_description(f"Epoch [{epoch + 1}/{num_epochs}]")
-                loop.set_postfix(loss=loss.item())
-
-                # calculations for accuracy
-                _, predictions = scores.max(1)
-                num_corrects += (predictions == targets).sum()
-                num_samples += predictions.size(0)
-                mcf1s = MulticlassF1Score(num_classes=10)
-
-
-                # Update running loss.
-                running_loss += loss.item()
-
-            print(f" f-score = {mcf1s(predictions, targets)}")
-            print(f"Accuracy = {num_corrects/num_samples*100:.2f}; Received {num_corrects}/{num_samples}")
-            # model.train()
-
-                #f1 score
-                # f1 = F1Score(task="multiclass", num_classes=3)
-                
+        print(f"Accuracy = {accuracy*100:.2f}; Received {num_corrects}/{num_samples}")
+        print(f"Precision = {precision} and recall = {recall} and f1 = {f1}")
         
+
+        #confusion matrix
+        cm = confusion_matrix(targets, predictions, labels=[0,1,2,3,4,5,6,7,8,9])
+        pp = sns.heatmap(cm)
+        plt.show()
+        pp.figure.savefig("roar.png")
+
+        # confusion version
+        confusion_version = 0
+        while os.path.exists(os.path.join(confusion_dir, f"confusion_{confusion_version}")):
+            confusion_version += 1
+
+        # Create save directory.
+        confusion_dir = os.path.join(confusion_dir, f"confusion_{confusion_version}")
+
+        # Create save directory if not exists.
+        if not os.path.exists(confusion_dir):
+            os.makedirs(confusion_dir)
+
+
+        # Log each element of the vector individually
+        for index, value in enumerate(f1):
+            tag = f'f1_element_{index}'
+            writer.add_scalar(tag, value, global_step=index)
+
+
+
         # Log to tensorboard
-        running_loss /= len(test_loader)
-        writer.add_scalar("Loss/test", running_loss, epoch)
-        # writer.add_scalar('Loss/test', np.random.random(), n_iter)
-        # writer.add_scalar('Accuracy/train', np.random.random(), n_iter)
-        # writer.add_scalar('Accuracy/test', np.random.random(), n_iter)
+        # running_loss /= len(test_loader)
+        writer.add_scalar("Accuracy", accuracy)
+        writer.add_scalar("Precision", precision)
+        writer.add_scalar("Recall", recall)
+        # writer.add_scalar("f1", f1)
 
-        # Save model at save interval.
-        if (epoch + 1) % save_interval == 0:
-            torch.save({
-                "epoch": epoch + 1,
-                "model_state_dict": model.state_dict(),
-                "optimizer_state_dict": optimizer.state_dict(),
-                "loss": running_loss
-                # "accuracy": 
-            },
-                os.path.join(save_dir, f"model_latest.pth")
-            )
+                # Close the SummaryWriter
+        writer.close()
 
-        # Save best model.
-        if running_loss < best_loss:
-            best_loss = running_loss
-            torch.save({
-                "epoch": epoch + 1,
-                "model_state_dict": model.state_dict(),
-                "optimizer_state_dict": optimizer.state_dict(),
-                "loss": running_loss
-            },
-                os.path.join(save_dir, f"model_best.pth")
-            )
 
 
 if __name__ == "__main__":
@@ -195,17 +208,24 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int,
                         default=16, help="batch size.")
     parser.add_argument("--num_epochs", type=int,
-                        default=100, help="number of epochs.")
+                        default=1, help="number of epochs.")
     parser.add_argument("--lr", type=float, default=1e-4,
                         help="learning rate.")
-    # parser.add_argument("--device", type=str, default="cpu", help="device.")
+    parser.add_argument("--device", type=str, default="cpu", help="device.")
     parser.add_argument("--num_workers", type=int,
                         default=4, help="number of workers.")
     # parser.add_argument("--device", type=str, default="cpu", help="device.")
     parser.add_argument("--save_dir", type=str,
                         default="weights", help="save directory.")
+    parser.add_argument("--confusion_dir", type=str,
+                        default="confusion", help="confusion directory.")
     parser.add_argument("--save_interval", type=int,
                         default=10, help="save interval.")
+    parser.add_argument("--model_dir", type=str,
+                        default="run_10", help="model directory.")
+        
+    
+    
     args = parser.parse_args()
 
     test(
@@ -215,15 +235,9 @@ if __name__ == "__main__":
         num_epochs=args.num_epochs,
         lr=args.lr,
         num_workers=args.num_workers,
-        # device=args.device,
+        device=args.device,
+        confusion_dir=args.confusion_dir,
         save_dir=args.save_dir,
-        save_interval=args.save_interval
+        save_interval=args.save_interval,
+        model_dir=args.model_dir
     )
-
-# import torch
-# if torch.backends.mps.is_available():
-#     mps_device = torch.device("mps")
-#     x = torch.ones(1, device=mps_device)
-#     print (x)
-# else:
-#     print ("MPS device not found.")
