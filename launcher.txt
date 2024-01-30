@@ -1,0 +1,40 @@
+Run Version=0, run_0_m_recur_cnn_d_4, Parameters = 0.136, width = 64, depth = 4, Dataset=CIFAR10, Train Batch Size=128, Test Batch Size=50, Optimizer=SGD, Model=recur_cnn, lr=0.01, lr factor=0.1, lr_schedule=[50, 100, 150]
+
+Run Version=1, run_1_m_recur_cnn_d_5, Parameters = 0.136, width = 64, depth = 5, Dataset=CIFAR10, Train Batch Size=128, Test Batch Size=50, Optimizer=SGD, Model=recur_cnn, lr=0.01, lr factor=0.1, lr_schedule=[50, 100, 150]
+
+Run Version=2, run_2_m_recur_cnn_d_6, Parameters = 0.136, width = 64, depth = 6, Dataset=CIFAR10, Train Batch Size=128, Test Batch Size=50, Optimizer=SGD, Model=recur_cnn, lr=0.01, lr factor=0.1, lr_schedule=[50, 100, 150]
+
+Run Version=3, run_3_m_recur_cnn_d_7, Parameters = 0.136, width = 64, depth = 7, Dataset=CIFAR10, Train Batch Size=128, Test Batch Size=50, Optimizer=SGD, Model=recur_cnn, lr=0.01, lr factor=0.1, lr_schedule=[50, 100, 150]
+
+Run Version=4, run_4_m_recur_cnn_d_8, Parameters = 0.136, width = 64, depth = 8, Dataset=CIFAR10, Train Batch Size=128, Test Batch Size=50, Optimizer=SGD, Model=recur_cnn, lr=0.01, lr factor=0.1, lr_schedule=[50, 100, 150]
+
+Run Version=5, run_5_m_recur_cnn_d_4, Parameters = 0.136, width = 64, depth = 4, Dataset=SVHN, Train Batch Size=128, Test Batch Size=50, Optimizer=SGD, Model=recur_cnn, lr=0.01, lr factor=0.1, lr_schedule=[50, 100, 150]
+ 
+Run Version=6, run_6_m_recur_cnn_d_5, Parameters = 0.136, width = 64, depth = 5, Dataset=SVHN, Train Batch Size=128, Test Batch Size=50, Optimizer=SGD, Model=recur_cnn, lr=0.01, lr factor=0.1, lr_schedule=[50, 100, 150]
+
+Run Version=7, run_5_m_recur_cnn_d_6, Parameters = 0.136, width = 64, depth = 6, Dataset=SVHN, Train Batch Size=128, Test Batch Size=50, Optimizer=SGD, Model=recur_cnn, lr=0.01, lr factor=0.1, lr_schedule=[50, 100, 150]
+ 
+Run Version=8, run_8_m_recur_cnn_d_7, Parameters = 0.136, width = 64, depth = 7, Dataset=SVHN, Train Batch Size=128, Test Batch Size=50, Optimizer=SGD, Model=recur_cnn, lr=0.01, lr factor=0.1, lr_schedule=[50, 100, 150]
+
+Run Version=9, run_9_m_recur_cnn_d_8, Parameters = 0.136, width = 64, depth = 8, Dataset=SVHN, Train Batch Size=128, Test Batch Size=50, Optimizer=SGD, Model=recur_cnn, lr=0.01, lr factor=0.1, lr_schedule=[50, 100, 150]
+
+ Run Version=10, run_10_m_recur_cnn_d_4, Parameters = 0.135, width = 64, depth = 4, Dataset=MNIST, Train Batch Size=128, Test Batch Size=50, Optimizer=SGD, Model=recur_cnn, lr=0.01, lr factor=0.1, lr_schedule=[50, 100, 150]
+
+ Run Version=11, run_11_m_recur_cnn_d_5, Parameters = 0.135, width = 64, depth = 5, Dataset=MNIST, Train Batch Size=128, Test Batch Size=50, Optimizer=SGD, Model=recur_cnn, lr=0.01, lr factor=0.1, lr_schedule=[50, 100, 150]
+ 
+   Run Version=12, run_12_m_recur_cnn_d_6, Parameters = 0.135, width = 64, depth = 6, Dataset=MNIST, Train Batch Size=128, Test Batch Size=50, Optimizer=SGD, Model=recur_cnn, lr=0.01, lr factor=0.1, lr_schedule=[50, 100, 150]
+   
+    Run Version=13, run_13_m_recur_cnn_d_7, Parameters = 0.135, width = 64, depth = 7, Dataset=MNIST, Train Batch Size=128, Test Batch Size=50, Optimizer=SGD, Model=recur_cnn, lr=0.01, lr factor=0.1, lr_schedule=[50, 100, 150]
+ 
+  Run Version=14, run_14_m_recur_cnn_d_8, Parameters = 0.135, width = 64, depth = 8, Dataset=MNIST, Train Batch Size=128, Test Batch Size=50, Optimizer=SGD, Model=recur_cnn, lr=0.01, lr factor=0.1, lr_schedule=[50, 100, 150]
+
+ 
+  
+
+ 
+
+
+
+
+
+
